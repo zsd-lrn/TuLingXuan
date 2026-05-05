@@ -4,6 +4,7 @@ import { registerShellIPC } from './shell'
 import { registerAIIPC } from './ai'
 import { registerClusteringIPC } from './clustering'
 import { registerExportIPC } from './export'
+import { registerSettingsIPC } from './settings'
 
 export function registerAllIPC() {
   registerProjectIPC()
@@ -13,4 +14,5 @@ export function registerAllIPC() {
   registerAIIPC()
   registerClusteringIPC()
   registerExportIPC()
+  registerSettingsIPC()
 }
