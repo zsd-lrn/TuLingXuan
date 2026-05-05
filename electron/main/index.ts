@@ -2,37 +2,33 @@ import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { runMigrations } from './db/migrate'
 import { closeDB } from './db/connection'
+import { registerThumbProtocol, registerThumbScheme } from './protocols/tlxThumb'
+import { registerImageProtocol, registerImageScheme } from './protocols/tlxImage'
+
+registerThumbScheme()
+registerImageScheme()
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1100,
-    minHeight: 700,
+    width: 1440, height: 900, minWidth: 1100, minHeight: 700,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true,
+      sandbox: false, contextIsolation: true,
     },
   })
-
-  if (process.env.ELECTRON_RENDERER_URL) {
-    win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
-  }
+  if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
+  else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
 app.whenReady().then(() => {
   runMigrations()
+  registerThumbProtocol()
+  registerImageProtocol()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
-
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 app.on('before-quit', () => closeDB())
