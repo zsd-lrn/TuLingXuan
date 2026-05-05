@@ -1,10 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Project } from '@shared/types'
 import { api } from '../lib/ipc'
 import { DropZone } from '../components/DropZone'
 
 export function HomePage({ onOpen, onSettings }: { onOpen: (id: string) => void; onSettings: () => void }) {
+  const qc = useQueryClient()
   const projects = useQuery<Project[]>({ queryKey: ['projects'], queryFn: () => api.projects.list() })
+  const del = useMutation({
+    mutationFn: (id: string) => api.projects.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  })
+
+  function handleDelete(p: Project, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (confirm(`删除项目「${p.name}」？\n\n仅删除元数据（评分/标签/缓存的 AI 分析）。原图不动。`)) {
+      del.mutate(p.id)
+    }
+  }
 
   return (
     <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
@@ -24,8 +36,19 @@ export function HomePage({ onOpen, onSettings }: { onOpen: (id: string) => void;
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
         {projects.data?.map((p: Project) => (
-          <div key={p.id} onClick={() => onOpen(p.id)}
-               style={{ background: '#18181b', borderRadius: 10, padding: 14, cursor: 'pointer' }}>
+          <div key={p.id} onClick={() => onOpen(p.id)} className="project-card"
+               style={{ background: '#18181b', borderRadius: 10, padding: 14, cursor: 'pointer', position: 'relative' }}>
+            <button
+              onClick={(e) => handleDelete(p, e)}
+              title="删除项目"
+              style={{
+                position: 'absolute', top: 6, right: 6, width: 22, height: 22,
+                background: 'rgba(0,0,0,0.6)', color: '#aaa', border: '1px solid #333',
+                borderRadius: 4, cursor: 'pointer', fontSize: 14, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 2,
+              }}
+            >×</button>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginBottom: 10, height: 120, background: '#0a0a0a', borderRadius: 6, overflow: 'hidden' }}>
               {p.coverHashes.length === 0
                 ? <div style={{ gridColumn: '1 / span 2', display:'flex', alignItems:'center', justifyContent:'center', color:'#444' }}>—</div>
