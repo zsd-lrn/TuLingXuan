@@ -31,9 +31,23 @@ function createWindow() {
       sandbox: false, contextIsolation: true,
     },
   })
-  if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else win.loadFile(join(__dirname, '../renderer/index.html'))
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+    // Auto-open devtools in dev mode so users see renderer-side errors immediately.
+    win.webContents.openDevTools({ mode: 'detach' })
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'))
+  }
 }
+
+// Surface unhandled errors in main process — they're often the cause of "app
+// froze then quit" reports. Without this they vanish silently.
+process.on('uncaughtException', (err) => {
+  console.error('[main] uncaughtException:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] unhandledRejection:', reason)
+})
 
 app.whenReady().then(() => {
   runMigrations()

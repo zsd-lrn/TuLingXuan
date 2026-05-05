@@ -14,6 +14,10 @@ export class AnalysisQueue {
   private cancelled = false
   private failureStreak = 0
   private currentClient: AIClient | null = null
+  // Guard against concurrent run() calls (e.g. React StrictMode double-effect,
+  // or users hitting "AI 分析" twice). Without this we'd spawn extra workers
+  // racing over the same job list.
+  private isRunning = false
 
   constructor(public projectId: string) {}
 
@@ -49,6 +53,11 @@ export class AnalysisQueue {
   }
 
   async run() {
+    if (this.isRunning) return
+    this.isRunning = true
+    this.cancelled = false
+    console.log(`[AnalysisQueue] run start, project=${this.projectId}, jobs=${this.jobs.length}`)
+
     const total = () => DatabaseService.listPendingImages(this.projectId).length + this.running
     const send = (done: number) => this.send('ai:progress', {
       projectId: this.projectId,
@@ -109,7 +118,12 @@ export class AnalysisQueue {
         send(done)
       }
     }
-    await Promise.all(Array.from({ length: CONCURRENCY }, () => work()))
+    try {
+      await Promise.all(Array.from({ length: CONCURRENCY }, () => work()))
+      console.log(`[AnalysisQueue] run done, project=${this.projectId}`)
+    } finally {
+      this.isRunning = false
+    }
   }
 }
 
