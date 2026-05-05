@@ -23,9 +23,9 @@ registerImageScheme()
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1100, minHeight: 700,
-    // Latin-first title so OS-native window chrome (which uses system fonts, not our
-    // bundled CJK webfont) reads correctly even on systems without CJK fonts installed.
-    title: 'Tulingxuan · 图灵选',
+    // Latin-only title for OS-native chrome (window/menu/dialog use system fonts,
+    // not our bundled CJK webfont). App content inside the window remains 全中文.
+    title: 'Tulingxuan',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false, contextIsolation: true,
