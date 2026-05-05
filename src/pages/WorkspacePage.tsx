@@ -7,6 +7,7 @@ import { FilterSidebar } from '../components/FilterSidebar'
 import { Inspector } from '../components/Inspector'
 import { GridView } from '../views/GridView'
 import { ClusterView } from '../views/ClusterView'
+import { SingleView } from '../views/SingleView'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useImageQuery } from '../hooks/useImageQuery'
 import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
@@ -34,7 +35,7 @@ export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack
           {view === 'grid' && <GridView projectId={projectId} />}
           {view === 'cluster' && <ClusterView projectId={projectId} />}
           {view === 'compare' && <div style={{ padding: 24, color: '#666' }}>Compare — Day 3</div>}
-          {view === 'single' && <div style={{ padding: 24, color: '#666' }}>Single — Day 3</div>}
+          {view === 'single' && <SingleView projectId={projectId} />}
         </div>
         <div style={{ borderLeft: '1px solid #222', overflow: 'auto' }}>
           <Inspector projectId={projectId} />
