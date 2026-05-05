@@ -10,6 +10,8 @@ export function CompareView({ projectId }: { projectId: string }) {
   const qc = useQueryClient()
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [rewriteBusy, setRewriteBusy] = useState(false)
+  const [rewrittenPrompts, setRewrittenPrompts] = useState<string[] | null>(null)
 
   const queries = useQueries({
     queries: ids.map((id) => ({
@@ -40,15 +42,44 @@ export function CompareView({ projectId }: { projectId: string }) {
     } finally { setBusy(false) }
   }
 
+  async function rewritePrompts() {
+    setRewriteBusy(true); setRewrittenPrompts(null)
+    try {
+      const r = await api.ai.rewritePrompts(ids)
+      setRewrittenPrompts(r.prompts)
+    } catch (e: any) {
+      setRewrittenPrompts(['生成失败：' + (e?.message ?? e)])
+    } finally { setRewriteBusy(false) }
+  }
+
+  async function copyText(t: string) {
+    try { await navigator.clipboard.writeText(t) } catch { /* ignore */ }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #222', display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #222', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ color: '#888', fontSize: 12 }}>对比 {images.length} 张</span>
         <button onClick={askAI} disabled={busy}
           style={{ background: '#4a90e2', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 5, cursor: 'pointer', fontSize: 12 }}>
           {busy ? 'AI 思考中…' : '🤖 AI 评审建议'}
         </button>
-        {aiSummary && <span style={{ flex: 1, color: '#ddd', fontSize: 12, lineHeight: 1.5 }}>{aiSummary}</span>}
+        <button onClick={rewritePrompts} disabled={rewriteBusy}
+          style={{ background: '#222', color: '#ddd', border: '1px solid #333', padding: '5px 12px', borderRadius: 5, cursor: 'pointer', fontSize: 12 }}>
+          {rewriteBusy ? '生成中…' : '✨ 基于这些图改进 prompt'}
+        </button>
+        {aiSummary && <span style={{ flex: '1 1 100%', color: '#ddd', fontSize: 12, lineHeight: 1.5 }}>{aiSummary}</span>}
+        {rewrittenPrompts && (
+          <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+            {rewrittenPrompts.map((p, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', background: '#0a0a0a', padding: '6px 8px', borderRadius: 4 }}>
+                <span style={{ color: '#666', fontSize: 11, marginTop: 1 }}>{i + 1}.</span>
+                <span style={{ flex: 1, color: '#ddd', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.5 }}>{p}</span>
+                <button onClick={() => copyText(p)} style={{ background: '#222', border: '1px solid #333', color: '#aaa', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10 }}>复制</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)`, gap: 4, padding: 4, minHeight: 0 }}>
         {images.map((img) => (

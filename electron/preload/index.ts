@@ -21,6 +21,7 @@ const api = {
     suggestPrompt: (imageId: string) => ipcRenderer.invoke('ai.suggestPrompt', imageId),
     compare: (imageIds: string[]) => ipcRenderer.invoke('ai.compare', imageIds),
     nlSearch: (projectId: string, query: string) => ipcRenderer.invoke('ai.nlSearch', { projectId, query }),
+    rewritePrompts: (imageIds: string[]) => ipcRenderer.invoke('ai.rewritePrompts', imageIds),
   },
   clustering: {
     compute: (projectId: string) => ipcRenderer.invoke('clustering.compute', projectId),

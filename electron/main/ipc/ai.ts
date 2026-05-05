@@ -57,4 +57,15 @@ export function registerAIIPC() {
       .map((s) => s.id)
     return { ids: scored }
   })
+
+  ipcMain.handle('ai.rewritePrompts', async (_e, imageIds: string[]) => {
+    const imgs = imageIds.map((id) => DatabaseService.getImage(id)).filter((x): x is Image => x !== null)
+    if (imgs.length < 1) throw new Error('need at least 1 image')
+    const client = getPrimaryClient()
+    const metadata = imgs.map((i, idx) =>
+      `图${idx + 1}:\n  caption: ${i.aiCaption ?? '-'}\n  tags: ${i.tags.map((t) => `${t.category}:${t.value}`).join(', ')}\n  prompt_guess: ${i.aiPromptGuess ?? '-'}`,
+    ).join('\n\n')
+    const prompts = await client.rewritePrompts({ metadata })
+    return { prompts }
+  })
 }
