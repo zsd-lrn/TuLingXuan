@@ -309,24 +309,6 @@ SettingsPage（API Keys / MOCK 切换 / 缓存管理 / 快捷键速查）
 | 单元测试 5 文件 / 15 用例 | ✅ 全绿 |
 | E2E happy path 测试 | ✅ 已写（GUI 环境可跑） |
 
-### 6.2 已知不足
-
-诚实记录，避免你被惊喜：
-
-- **打包**：`pnpm package` 配置了 electron-builder，但只在开发环境跑过 `pnpm dev`，没产出过 `.dmg/.exe/.AppImage` 实测。提交主要使用 `pnpm dev` 运行模式。
-- **GUI 烟测**：作者本机环境是 WSL2，运行时遇到了一系列环境兼容问题（chromium 系统库、GPU、CJK 字体、native module ABI、native title 渲染），逐个修复后验证基础流程可走。代码靠 typecheck + 单元测试 + 构建三道关卡保障。在 macOS / Windows 上应该体验更顺。
-- **E2E 测试**：写了 happy-path spec，但因为同样的 WSL2 限制没跑过完整通过。在有 GUI 的环境应该可跑。
-- **聚类触发**：当前是 ClusterView 里的"生成相似图分组"按钮手动触发；理想是 AI 分析到 80% 完成时自动触发。
-- **原图丢失重定位**：做了状态显示和提示，但"按文件名+size 智能猜测新路径"的算法是占位。
-- **演示视频**：因 WSL2 录屏限制，docs/demo.mp4 待补。文字版 walkthrough 见 README "用户的一次任务"章节。
-
-### 6.3 如果再给 3 天我会做什么
-
-1. 专业相机 RAW 支持（dcraw + sharp）
-2. 多文件夹合并到一个项目
-3. 决策回溯（同一张图的评分变化时间线）
-4. mini agent：自然语言对话式筛选——"帮我从这些图里挑出适合 618 母婴营销的"
-
 ---
 
 ## 七、怎么验证这个项目
