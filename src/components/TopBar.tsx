@@ -1,5 +1,6 @@
 import { useWorkspaceStore, type ViewName } from '../stores/workspaceStore'
 import { SearchBar } from './SearchBar'
+import { ExportButton } from './ExportButton'
 
 const VIEWS: { id: ViewName; label: string }[] = [
   { id: 'grid',    label: '⊞ 网格' },
@@ -17,6 +18,7 @@ export function TopBar({ projectId, projectName, onBack }: { projectId: string; 
       <div style={{ fontWeight: 600 }}>{projectName}</div>
       <div style={{ flex: 1 }} />
       <SearchBar projectId={projectId} />
+      <ExportButton projectId={projectId} />
       <div style={{ display: 'flex', gap: 4 }}>
         {VIEWS.map((v) => (
           <button key={v.id} onClick={() => setView(v.id)}
