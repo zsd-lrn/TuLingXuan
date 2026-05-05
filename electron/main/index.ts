@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { runMigrations } from './db/migrate'
+import { closeDB } from './db/connection'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -22,6 +24,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  runMigrations()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -31,3 +34,5 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+app.on('before-quit', () => closeDB())
