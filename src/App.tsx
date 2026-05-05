@@ -17,7 +17,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <StatusBanner />
       {route.name === 'home' && <HomePage onOpen={(id) => setRoute({ name: 'workspace', projectId: id })} onSettings={() => setRoute({ name: 'settings' })} />}
-      {route.name === 'workspace' && <WorkspacePage projectId={route.projectId} onBack={() => setRoute({ name: 'home' })} />}
+      {route.name === 'workspace' && <WorkspacePage projectId={route.projectId} onBack={() => setRoute({ name: 'home' })} onSettings={() => setRoute({ name: 'settings' })} />}
       {route.name === 'settings' && <SettingsPage onBack={() => setRoute({ name: 'home' })} />}
     </QueryClientProvider>
   )

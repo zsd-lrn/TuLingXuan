@@ -15,7 +15,7 @@ import { useImageQuery } from '../hooks/useImageQuery'
 import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
 import { useAIProgress } from '../hooks/useAIProgress'
 
-export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
+export function WorkspacePage({ projectId, onBack, onSettings }: { projectId: string; onBack: () => void; onSettings: () => void }) {
   const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() })
   const view = useWorkspaceStore((s) => s.view)
@@ -46,7 +46,7 @@ export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack
         <div style={{ background: '#7f1d1d', color: '#fff', padding: '6px 12px', fontSize: 12, textAlign: 'center' }}>
           ⚠ 未配置 AI key — 仅人工筛选可用，去{' '}
           <button
-            onClick={() => {}}
+            onClick={onSettings}
             style={{ background: 'transparent', color: '#fca5a5', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}
           >
             设置
