@@ -5,7 +5,7 @@ export function registerShellIPC() {
     const win = BrowserWindow.getFocusedWindow() ?? undefined
     const r = await dialog.showOpenDialog(win!, {
       properties: ['openDirectory'],
-      title: '选择图片文件夹',
+      title: 'Pick image folder · 选择图片文件夹',
     })
     return r.canceled ? null : r.filePaths[0]
   })
@@ -14,7 +14,7 @@ export function registerShellIPC() {
     const win = BrowserWindow.getFocusedWindow() ?? undefined
     const r = await dialog.showOpenDialog(win!, {
       properties: ['openDirectory', 'createDirectory'],
-      title: '选择导出目标文件夹',
+      title: 'Pick export folder · 选择导出目标文件夹',
     })
     return r.canceled ? null : r.filePaths[0]
   })
