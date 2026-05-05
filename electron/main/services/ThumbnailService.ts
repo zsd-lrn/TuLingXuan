@@ -21,10 +21,13 @@ export const ThumbnailService = {
       return { path: out, width: meta.width ?? 0, height: meta.height ?? 0 }
     }
     const meta = await sharp(srcPath).metadata()
+    // Use stock JPEG encoder (mozjpeg requires libvips built with mozjpeg support,
+    // which the prebuilt sharp binary doesn't always include — particularly on Linux ARM).
+    // Quality difference vs mozjpeg is ~5-10% file size; not worth the binary fragility.
     await sharp(srcPath)
       .rotate()
       .resize({ width: SIZE, height: SIZE, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80, mozjpeg: true })
+      .jpeg({ quality: 80 })
       .toFile(out)
     return { path: out, width: meta.width ?? 0, height: meta.height ?? 0 }
   },
@@ -36,7 +39,8 @@ export const ThumbnailService = {
     const workers = Array.from({ length: concurrency }, async () => {
       while (queue.length) {
         const item = queue.shift()!
-        try { await this.generate(item.srcPath, item.hash) } catch { /* skip */ }
+        try { await this.generate(item.srcPath, item.hash) }
+        catch (e) { console.warn('thumbnail generate failed:', item.hash, e) }
         done++; onProgress?.(done, items.length)
       }
     })

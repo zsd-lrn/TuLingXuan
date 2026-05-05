@@ -116,6 +116,11 @@ export const DatabaseService = {
     return rowToImage(row, tags)
   },
 
+  findImagePathByHash(hash: string): string | null {
+    const row = getDB().prepare(`SELECT path FROM images WHERE hash = ? LIMIT 1`).get(hash) as { path: string } | undefined
+    return row?.path ?? null
+  },
+
   updateDecision(input: { id: string; status?: UserStatus; score?: number | null; note?: string | null }): void {
     const sets: string[] = []
     const vals: any[] = []
