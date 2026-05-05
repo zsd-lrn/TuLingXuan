@@ -4,6 +4,7 @@ import { runMigrations } from './db/migrate'
 import { closeDB } from './db/connection'
 import { registerThumbProtocol, registerThumbScheme } from './protocols/tlxThumb'
 import { registerImageProtocol, registerImageScheme } from './protocols/tlxImage'
+import { registerAllIPC } from './ipc'
 
 registerThumbScheme()
 registerImageScheme()
@@ -22,6 +23,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   runMigrations()
+  registerAllIPC()
   registerThumbProtocol()
   registerImageProtocol()
   createWindow()
