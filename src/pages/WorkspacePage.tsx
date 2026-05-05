@@ -6,10 +6,14 @@ import { FilterSidebar } from '../components/FilterSidebar'
 import { Inspector } from '../components/Inspector'
 import { GridView } from '../views/GridView'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useImageQuery } from '../hooks/useImageQuery'
+import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
 
 export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
   const view = useWorkspaceStore((s) => s.view)
+  const imageList = useImageQuery(projectId)
+  useKeyboardCommand(projectId, imageList.data?.items ?? [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>

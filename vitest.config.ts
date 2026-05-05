@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@shared': resolve(__dirname, 'shared'),
       '@main':   resolve(__dirname, 'electron/main'),
+      '@':       resolve(__dirname, 'src'),
     },
   },
 })
