@@ -16,6 +16,7 @@ import { useAIProgress } from '../hooks/useAIProgress'
 
 export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() })
   const view = useWorkspaceStore((s) => s.view)
   const imageList = useImageQuery(projectId)
   useKeyboardCommand(projectId, imageList.data?.items ?? [])
@@ -25,8 +26,22 @@ export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack
     api.ai.start(projectId).catch(console.error)
   }, [projectId])
 
+  const aiOff = settings.data && !settings.data.mockMode && !settings.data.doubaoKey
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {aiOff && (
+        <div style={{ background: '#7f1d1d', color: '#fff', padding: '6px 12px', fontSize: 12, textAlign: 'center' }}>
+          ⚠ 未配置 AI key — 仅人工筛选可用，去{' '}
+          <button
+            onClick={() => {}}
+            style={{ background: 'transparent', color: '#fca5a5', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}
+          >
+            设置
+          </button>
+          {' '}配置后体验完整 AI
+        </div>
+      )}
       <TopBar projectId={projectId} projectName={project.data?.name ?? '...'} onBack={onBack} />
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '220px 1fr 280px', minHeight: 0 }}>
         <div style={{ borderRight: '1px solid #222', overflow: 'auto' }}>
