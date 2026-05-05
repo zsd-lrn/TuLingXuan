@@ -44,6 +44,13 @@ export function ImageCard({ image, focused, selected, onClick }: {
           background: STATUS_COLOR[image.userStatus],
         }} />
       )}
+      {/* issue badge */}
+      {image.tags.some((t) => t.category === 'issue' && t.value !== '无') && (
+        <div title="AI 检测到问题" style={{
+          position: 'absolute', top: 4, left: 4,
+          width: 8, height: 8, borderRadius: 999, background: '#ef4444',
+        }} />
+      )}
       {/* score */}
       {image.userScore && (
         <div style={{
