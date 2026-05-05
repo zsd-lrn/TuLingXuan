@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { Project } from '@shared/types'
 import { api } from '../lib/ipc'
@@ -8,12 +9,18 @@ import { GridView } from '../views/GridView'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useImageQuery } from '../hooks/useImageQuery'
 import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
+import { useAIProgress } from '../hooks/useAIProgress'
 
 export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
   const view = useWorkspaceStore((s) => s.view)
   const imageList = useImageQuery(projectId)
   useKeyboardCommand(projectId, imageList.data?.items ?? [])
+  const ai = useAIProgress(projectId)
+
+  useEffect(() => {
+    api.ai.start(projectId).catch(console.error)
+  }, [projectId])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -34,6 +41,7 @@ export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack
       </div>
       <div style={{ height: 28, borderTop: '1px solid #222', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 11, color: '#666' }}>
         {project.data && <span>{project.data.imageCount} 张 · 已决策 {project.data.decidedCount} · 已分析 {project.data.aiAnalyzedCount}</span>}
+        {ai.total > 0 && <span style={{ marginLeft: 12 }}>AI 分析 {ai.done}/{ai.total}</span>}
       </div>
     </div>
   )
