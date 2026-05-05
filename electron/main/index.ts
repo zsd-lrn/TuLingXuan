@@ -6,6 +6,17 @@ import { registerThumbProtocol, registerThumbScheme } from './protocols/tlxThumb
 import { registerImageProtocol, registerImageScheme } from './protocols/tlxImage'
 import { registerAllIPC } from './ipc'
 
+// 图灵选不依赖 GPU 加速（图片处理在主进程 sharp 走 CPU，渲染是普通 DOM）。
+// WSL2 / 无独显环境下 chromium 启 GPU 进程会崩；mac/win/linux 上关掉也只是略增 CPU 渲染负担。
+app.disableHardwareAcceleration()
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-gpu-compositing')
+app.commandLine.appendSwitch('disable-software-rasterizer')
+app.commandLine.appendSwitch('in-process-gpu')
+if (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP) {
+  app.commandLine.appendSwitch('no-sandbox')
+}
+
 registerThumbScheme()
 registerImageScheme()
 
