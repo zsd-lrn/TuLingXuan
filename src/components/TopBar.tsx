@@ -1,4 +1,5 @@
 import { useWorkspaceStore, type ViewName } from '../stores/workspaceStore'
+import { SearchBar } from './SearchBar'
 
 const VIEWS: { id: ViewName; label: string }[] = [
   { id: 'grid',    label: '⊞ 网格' },
@@ -7,7 +8,7 @@ const VIEWS: { id: ViewName; label: string }[] = [
   { id: 'single',  label: '◉ 单图' },
 ]
 
-export function TopBar({ projectName, onBack }: { projectName: string; onBack: () => void }) {
+export function TopBar({ projectId, projectName, onBack }: { projectId: string; projectName: string; onBack: () => void }) {
   const view = useWorkspaceStore((s) => s.view)
   const setView = useWorkspaceStore((s) => s.setView)
   return (
@@ -15,6 +16,7 @@ export function TopBar({ projectName, onBack }: { projectName: string; onBack: (
       <button onClick={onBack} style={{ background: 'transparent', color: '#aaa', border: 'none', cursor: 'pointer' }}>←</button>
       <div style={{ fontWeight: 600 }}>{projectName}</div>
       <div style={{ flex: 1 }} />
+      <SearchBar projectId={projectId} />
       <div style={{ display: 'flex', gap: 4 }}>
         {VIEWS.map((v) => (
           <button key={v.id} onClick={() => setView(v.id)}

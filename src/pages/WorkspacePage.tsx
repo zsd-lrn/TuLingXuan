@@ -6,6 +6,7 @@ import { TopBar } from '../components/TopBar'
 import { FilterSidebar } from '../components/FilterSidebar'
 import { Inspector } from '../components/Inspector'
 import { GridView } from '../views/GridView'
+import { ClusterView } from '../views/ClusterView'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useImageQuery } from '../hooks/useImageQuery'
 import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
@@ -24,14 +25,14 @@ export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <TopBar projectName={project.data?.name ?? '...'} onBack={onBack} />
+      <TopBar projectId={projectId} projectName={project.data?.name ?? '...'} onBack={onBack} />
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '220px 1fr 280px', minHeight: 0 }}>
         <div style={{ borderRight: '1px solid #222', overflow: 'auto' }}>
           <FilterSidebar projectId={projectId} />
         </div>
         <div style={{ minWidth: 0, overflow: 'hidden' }}>
           {view === 'grid' && <GridView projectId={projectId} />}
-          {view === 'cluster' && <div style={{ padding: 24, color: '#666' }}>Cluster — Day 2</div>}
+          {view === 'cluster' && <ClusterView projectId={projectId} />}
           {view === 'compare' && <div style={{ padding: 24, color: '#666' }}>Compare — Day 3</div>}
           {view === 'single' && <div style={{ padding: 24, color: '#666' }}>Single — Day 3</div>}
         </div>
