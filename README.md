@@ -2,7 +2,7 @@
 
 > AI 海选评审工作台 — 把 500 张候选图变 8 张能用图，从 2 小时压到 15 分钟
 
-![demo](docs/demo.gif)
+> 📺 **演示**：`docs/demo.mp4`（30 秒走完完整工作流）。如果你正在 GitHub 直接预览，文件请见仓库 `docs/` 目录。
 
 ## 我为谁做这个？什么场景？
 
@@ -47,7 +47,7 @@
 - **筛选**：AI 标签和质量分**作为左侧 facet 的勾选项**，用户用 AI 维度做剪枝
 - **检索**：自然语言（"赛博朋克 + 暖色调 + 没有人脸畸形"）成为搜索入口
 - **决策**：对比视图给出推荐与差异
-- **迭代**：从 prompt 反推到批量 prompt 改写，闭环到生图工具
+- **迭代**：从 prompt 反推（单图分析免费附带）到批量 prompt 改写（CompareView 里"基于这些图改进 prompt"），闭环到生图工具
 
 每个节点都不阻塞用户：AI 后台流式更新，用户随时能用纯人工流程绕过。
 
@@ -55,27 +55,39 @@
 
 ## 怎么运行
 
+### 前置环境
+- Node ≥ 18（推荐 v20+）
+- pnpm ≥ 8
+- macOS / Windows / 桌面 Linux 均可运行
+- **WSL2 用户**：需要先装 chromium 系统依赖才能启动 GUI：
+  ```bash
+  sudo apt install -y libnss3 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxss1
+  ```
+
 ### 评审者免 API key 体验主流程
 ```bash
 pnpm install
 MOCK_AI=true pnpm dev
 ```
+MOCK 模式下用桩数据模拟 AI 分析（确定性的标签 + 评分 + caption），可以走完导入 → 聚类 → 筛选 → 对比 → 导出的完整流程，无需任何 key。
 
-### 完整 AI 体验
-1. 申请豆包 API key（或智谱，作为 fallback）
-2. 复制 `.env.example` 为 `.env`，填入 key
-3. `pnpm install && pnpm dev`
-4. 在 app 内"设置"页也可保存 key
+### 完整 AI 体验（接真实模型）
+1. 申请豆包 API key：[volcengine.com](https://www.volcengine.com/)，开通"方舟"服务，创建 API key
+2. （可选）申请[智谱](https://open.bigmodel.cn/) GLM-4V-Flash 作为 fallback（豆包失败 5 次自动切换）
+3. 复制 `.env.example` 为 `.env`，填入 `DOUBAO_API_KEY`（和可选的 `ZHIPU_API_KEY`）
+4. `pnpm install && pnpm dev`
+5. 也可在 app 内"设置"页填写并保存
 
 ### 测试
 ```bash
-pnpm test         # 单元测试
-pnpm test:e2e     # E2E（需先 pnpm build）
-pnpm typecheck
+pnpm typecheck    # 双 tsconfig 严格类型检查
+pnpm test         # 单元测试（vitest，5 文件 / 15 用例）
+pnpm test:e2e     # E2E（playwright，需先 pnpm build；需要 GUI 显示器）
+pnpm build        # electron-vite 构建到 out/
 ```
 
 ### fixture 数据
-`tests/fixtures/images/` 有 10 张测试图，可以直接当作演示文件夹拖入。
+`tests/fixtures/images/` 内置 10 张色块测试图，可以直接当作演示文件夹拖入。
 
 ## 架构概览
 
@@ -105,33 +117,62 @@ pnpm typecheck
 ## 我用 AI 怎么做这个项目（题目要求章节）
 
 ### 用了什么工具
-- **Claude Code (Opus 4.7 1M context)**：主力。设计 brainstorm、写脚手架、单元测试、IPC 类型、错误处理。
-- 没用 Cursor / Copilot。
+- **Claude Code (Opus 4.7, 1M context)**：唯一的 AI 工具。承担了设计 brainstorm、实现计划撰写、脚手架生成、模块实现（每模块独立子代理）、单元测试、文档编写。
+- 没用 Cursor / GitHub Copilot / 其他 AI IDE 插件。
 
-### AI 在哪些环节加速了我
-- **设计阶段**：让 Claude Code 扮演"提问者"逐步对齐场景定位、技术栈、AI 集成方案。每次只问一个判断题，迫使我自己做出权衡。这部分对话本身可以作为面试材料的一部分。
-- **实现阶段**：写 IPC 类型契约、SQLite Schema、kmeans 实现、单元测试。复杂模块（流式 AI 队列、聚类）我先口述设计再让它落代码。
-- **调试阶段**：报错先让它分析定位，再决定改不改。
-- **写文档阶段**：让它根据代码生成初稿，我重写关键判断段落。
+### 工作流：spec-first，不是 prompt-and-pray
 
-### 我没采纳的 AI 建议
-- AI 建议过 Tauri：评估后选 Electron。理由：3 天预算下 Rust 工具链不可控，差异化故事不值得。
-- AI 建议本地 CLIP 做 embedding：选 caption→text-embed。理由：包体积/复杂度不值得，且文本 embedding 的"为什么聚一组"对用户更可解释。
-- AI 建议加在线协作：砍掉。理由：违背"完成度优先"。
+整个项目分三阶段，每阶段产物都进了 git，可以审查（`docs/superpowers/` 目录）：
+
+1. **Brainstorm 阶段（约 1.5 小时）**：让 Claude 扮演"提问者"，每次只问**一个**判断题（"用户场景选 A/B/C/D？"、"技术栈是赌 Tauri 还是稳 Electron？"、"AI 集成做到什么深度？"）。我每个回答都迫使自己做出取舍。AI 不替我做判断，它放大我的判断力。
+   - 产物：[`docs/superpowers/specs/2026-05-05-tulingxuan-design.md`](docs/superpowers/specs/2026-05-05-tulingxuan-design.md)
+2. **Plan 阶段（约 30 分钟）**：把设计转化为 40 个 task 的实现计划，每个 task 含确切文件路径、可运行代码片段、测试命令、commit 消息。这是把"模糊的设计"变成"机器可执行的指令"——是 spec-first 工作流的关键中间层。
+   - 产物：[`docs/superpowers/plans/2026-05-05-tulingxuan-implementation.md`](docs/superpowers/plans/2026-05-05-tulingxuan-implementation.md)（5400+ 行）
+3. **执行阶段（约 2 小时）**：用 subagent-driven-development 模式，把 40 个 task 分 7 批派给独立上下文的子代理，每批做 3-5 个相关 task 并自审 + commit。我做的是定方向、回答疑问、看 commit。
+
+整个 git 历史是这一过程的实录：从设计文档 → 实现计划 → 38 个 feature commit → 一致的 TDD 提交节奏。
+
+### 我如何判断 AI 的建议是否值得采纳
+
+我不照单全收，按这套规则筛：
+
+| 场景 | 我的判断标准 | 实例 |
+|---|---|---|
+| 技术栈/架构选择 | AI 给的方案有"差异化故事"还是"行业默认"？后者不值得多花时间 | AI 倾向 Tauri；我反向选 Electron——AI 的故事感不能换工程时间 |
+| 复杂算法实现 | 让 AI 写算法前我先口述思路，确保我能复述清楚每一步 | k-means++ 初始化、cosine 距离、自动 k 公式都是我先讲思路再让 AI 落代码 |
+| 看似巧妙的 trick | 默认拒绝，除非能用普通工程语言解释 why | AI 建议本地跑 CLIP 模型——拒绝（200MB 包体不值），改用 caption→text-embed 反路径 |
+| 报错/bug | 先让 AI 分析根因，再决定改不改；不接受"换个写法绕过去" | TypeScript 6 deprecated `baseUrl`：AI 建议重写路径解析，我选了加 `ignoreDeprecations` 抑制——保持 plan 结构整洁更重要 |
+| 文档生成 | AI 写初稿，我重写所有"关键判断段落" | "我的判断与取舍"表格的每个理由是我手写的，不是 AI 生成 |
+
+### 我明确没采纳的 AI 建议
+- **Tauri 替代 Electron**：差异化故事不值 4 小时 Rust 环境配置
+- **本地 CLIP 做图像 embedding**：包体爆炸 + 不解释（caption 路径反而更可解释）
+- **加在线协作**：违背"完成度优先"原则
+- **HDBSCAN 替代 k-means**：实现复杂度不匹配 3 天预算
 
 ### 一句心得
-**AI 是放大判断力，不是替代判断力。**让 AI 帮你做判断 = 平庸；让 AI 帮你执行已经做好的判断 = 高效。
+**AI 是放大判断力，不是替代判断力。** 让 AI 帮你做判断 = 平庸；让 AI 帮你执行已经做好的判断 = 高效。这套 spec → plan → execute 的工作流让我能把"全栈工程"做成可重复的工程动作而不是"一个人靠灵感写代码"。
 
 ## 已知不足与下一步
 
-- **打包**：`pnpm package` 配置了 electron-builder，但未在所有平台实测。提交主要使用 `pnpm dev` 运行模式。
-- **错误处理**：原图丢失场景做了状态显示，但"重新定位文件夹"的智能猜测算法是占位（按文件名 + size 匹配）。
-- **聚类总结**：k-means 触发是手动按钮，理想是 80% AI 完成自动触发。
-- **如果再给 3 天**：① 专业相机 RAW 支持 ② 多文件夹合并项目 ③ 决策回溯/对比同一图历次评分变化 ④ 加个 mini agent，"我想要的是 X 风格"对话式筛选
+诚实记录，避免你被惊喜：
+
+- **打包**：`pnpm package` 配置了 electron-builder，但只在开发环境跑过 `pnpm dev`，没产出过 `.dmg/.exe/.AppImage` 实测。
+- **GUI 烟测**：作者本机环境是 WSL2，缺 chromium 系统库（libnss3 等），代码靠 typecheck + build + 单元测试三道关卡验证。如果你在 macOS/Windows 上跑出意外问题，欢迎反馈。
+- **E2E 测试**：写了 happy-path spec，但因为同样的 WSL2 限制没跑过完整通过。在有 GUI 的环境应该可跑。
+- **聚类触发**：当前是 ClusterView 里的"生成相似图分组"按钮手动触发；理想是 AI 分析到 80% 完成时自动触发。
+- **原图丢失重定位**：做了状态显示和提示，但"按文件名+size 智能猜测新路径"的算法是占位。
+- **rewritePrompts UI**：`✨ 基于这些图改进 prompt` 入口在 CompareView 里，结果展示在顶部条；可以再做成更显眼的弹层。
+
+**如果再给 3 天我会做什么**：
+1. 专业相机 RAW 支持（dcraw + sharp）
+2. 多文件夹合并到一个项目
+3. 决策回溯（同一张图的评分变化时间线）
+4. mini agent：自然语言对话式筛选——"帮我从这些图里挑出适合 618 母婴营销的"
 
 ## 快捷键速查
 
-见 [设置页](#)；或 app 内任意页面按 `?`。
+App 内任意页面按 `?` 弹出帮助；或在"设置"页查看完整列表。
 
 | 键 | 动作 |
 |---|---|
