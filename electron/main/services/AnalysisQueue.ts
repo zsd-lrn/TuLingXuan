@@ -93,6 +93,7 @@ export class AnalysisQueue {
             // embedding failure non-fatal
           }
           this.failureStreak = 0
+          DatabaseService.refreshCovers(this.projectId)
           this.send('ai:image-updated', { imageId: job.imageId })
         } catch (e: unknown) {
           this.failureStreak++
