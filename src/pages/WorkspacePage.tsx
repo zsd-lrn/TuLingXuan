@@ -1,9 +1,36 @@
+import { useQuery } from '@tanstack/react-query'
+import type { Project } from '@shared/types'
+import { api } from '../lib/ipc'
+import { TopBar } from '../components/TopBar'
+import { FilterSidebar } from '../components/FilterSidebar'
+import { Inspector } from '../components/Inspector'
+import { GridView } from '../views/GridView'
+import { useWorkspaceStore } from '../stores/workspaceStore'
+
 export function WorkspacePage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
+  const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
+  const view = useWorkspaceStore((s) => s.view)
+
   return (
-    <div style={{ padding: 24 }}>
-      <button onClick={onBack}>← 返回</button>
-      <h2 style={{ marginTop: 16 }}>项目：{projectId}</h2>
-      <div style={{ color: '#888', marginTop: 8 }}>workspace shell — built in next task</div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <TopBar projectName={project.data?.name ?? '...'} onBack={onBack} />
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '220px 1fr 280px', minHeight: 0 }}>
+        <div style={{ borderRight: '1px solid #222', overflow: 'auto' }}>
+          <FilterSidebar projectId={projectId} />
+        </div>
+        <div style={{ minWidth: 0, overflow: 'hidden' }}>
+          {view === 'grid' && <GridView projectId={projectId} />}
+          {view === 'cluster' && <div style={{ padding: 24, color: '#666' }}>Cluster — Day 2</div>}
+          {view === 'compare' && <div style={{ padding: 24, color: '#666' }}>Compare — Day 3</div>}
+          {view === 'single' && <div style={{ padding: 24, color: '#666' }}>Single — Day 3</div>}
+        </div>
+        <div style={{ borderLeft: '1px solid #222', overflow: 'auto' }}>
+          <Inspector projectId={projectId} />
+        </div>
+      </div>
+      <div style={{ height: 28, borderTop: '1px solid #222', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 11, color: '#666' }}>
+        {project.data && <span>{project.data.imageCount} 张 · 已决策 {project.data.decidedCount} · 已分析 {project.data.aiAnalyzedCount}</span>}
+      </div>
     </div>
   )
 }
