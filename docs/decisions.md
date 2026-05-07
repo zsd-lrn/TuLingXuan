@@ -63,3 +63,34 @@
 - **选了**：在 AIService 加 mockClient，环境变量切换
 - **替代**：要求评审者必须配 key
 - **为什么**：评审者不应该被门槛劝退。mockClient 用 hash 派生确定性的"假"分析数据，能完整跑通主流程。这是体贴用户（评审者也是用户）的体现。
+
+## 11. AI 调用双路径 fallback（embedding 不可用时降级而非挂死）
+
+- **选了**：NL 搜索和聚类各做主/降级两条路径，主路径走 embedding，失败时降级到"LLM 拆词 + SQL LIKE"和"tag 多轴 group by"
+- **替代**：embedding 不可用直接报错让用户去开通接入点
+- **为什么**：开发期实测豆包 embedding 接入点很多账号默认未开通（同一 key 的 vision 通、embedding 404）。这是国内 LLM 服务的现实。如果"必须开通"是硬约束，每个新用户都要经历 5-10 分钟 onboarding 调控制台才能用——大部分人会流失。降级路径让产品**永远可用**，体验降低但不挂死。
+
+降级路径里的关键设计：
+- **UX 明示**：搜索框旁边小字"关键词 [...] · 命中 N"，用户感知走的哪条
+- **空结果显式化**：sentinel id `__no_match__`，避免"搜了但没结果"被渲染成"显示全部"
+- **聚类多轴自动选**：style → subject → mood → palette 依次试，最大组占比 ≤70% 的第一个轴胜出
+
+## 12. AI 队列自适应限流（不硬编码并发=3）
+
+- **选了**：基线并发=3，检测到 429/rate-limit 时降到 1，连续 8 次成功后回升
+- **替代**：硬编码 3，依赖用户调
+- **为什么**：豆包标准账号 RPM 软限制中等并发=3 跑得动，但企业账号 RPM 更低或共享额度时可能爆。自适应让队列对**不同账号档位**鲁棒——这是面向真实生产的设计而非 demo。
+
+## 13. AI 响应解析的 normalize 层（适配 LLM 输出形态差异）
+
+- **选了**：parseResponse 加 normalize 函数，把豆包平铺到顶层的 tag 子分类升纬到 `tags` 嵌套对象
+- **替代**：依赖 system prompt 让模型严格按 schema 输出
+- **为什么**：实测豆包对同一 system prompt 的 tags 嵌套要求不稳定——把 5 个子分类直接平铺到顶层是常态。这层 normalize 让代码对**任何 vision 模型**都鲁棒（切 GPT-4V/Claude vision 时不必改 schema）。
+
+工程原则：**外部信号源（LLM 输出、网络事件）不该当作"严格按 spec"。在边界做 normalize 比内部到处 try/catch 优雅**。
+
+## 14. 删项目时按"独占 hash"清理资源（不是简单 cascade）
+
+- **选了**：deleteProject 先收集"仅本项目使用的 hash"，再删 DB row（cascade 处理 image_tags / clusters），最后清理对应的 thumbs/<hash>.jpg 和 cache/ai/<hash>-v*.json
+- **替代**：让 ON DELETE CASCADE 处理 DB，磁盘文件留着等 clearCache
+- **为什么**：用户多次导入同一图到不同项目（hash 共用）时，删任一项目都不该误删共用资源。"按独占 hash 清理"是状态机闭环——删项目就要彻底干净，但不能伤别的项目。

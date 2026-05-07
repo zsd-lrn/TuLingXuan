@@ -158,17 +158,28 @@ pnpm build        # electron-vite 构建到 out/
 诚实记录，避免你被惊喜：
 
 - **打包**：`pnpm package` 配置了 electron-builder，但只在开发环境跑过 `pnpm dev`，没产出过 `.dmg/.exe/.AppImage` 实测。
-- **GUI 烟测**：作者本机环境是 WSL2，缺 chromium 系统库（libnss3 等），代码靠 typecheck + build + 单元测试三道关卡验证。如果你在 macOS/Windows 上跑出意外问题，欢迎反馈。
-- **E2E 测试**：写了 happy-path spec，但因为同样的 WSL2 限制没跑过完整通过。在有 GUI 的环境应该可跑。
-- **聚类触发**：当前是 ClusterView 里的"生成相似图分组"按钮手动触发；理想是 AI 分析到 80% 完成时自动触发。
+- **WSL2 + Wayland + Electron 31 不稳定**：开发期发现 GLib-GObject 错误堆积导致 renderer 在 WSLg 下几秒崩。**最终切到 Windows native 跑通**——Windows 端极稳定，WSL2 不是 Electron 桌面应用的合适环境。代码靠 typecheck + build + 单元测试三道关卡 + Windows 端实测。
+- **E2E 测试**：写了 happy-path spec，但同样因为 WSL2 限制没跑过完整通过。在 Windows native 应该可跑。
+- **豆包 embedding 接入点未开通**：测试账号 vision 200 OK 但 embedding 404，触发 NL 搜索 / 聚类的 fallback 路径。fallback 设计本身没问题（双路径降级 + 多轴自动选择），但语义搜索 / 向量聚类的真实威力没在 demo 里展现。
 - **原图丢失重定位**：做了状态显示和提示，但"按文件名+size 智能猜测新路径"的算法是占位。
 - **rewritePrompts UI**：`✨ 基于这些图改进 prompt` 入口在 CompareView 里，结果展示在顶部条；可以再做成更显眼的弹层。
+
+**已经修补的（开发后期增补）**：
+- ✅ **聚类自动触发**：AI 分析到 80% 完成时 useAIProgress 自动触发 clustering.compute（ref 守卫只触发一次）
+- ✅ **AI 进度可视化**：TopBar 进度条 + pulse 圆点 + 当前正在分析的图在网格里 shimmer outline
+- ✅ **Settings 测试连接**：5-token chat 调用一键验 key，配错时立刻看到 HTTP 状态码
+- ✅ **删项目资源回收**：清理本项目独有 hash 对应的 thumbs / ai-cache 文件，共用 hash 安全保留
+- ✅ **AI 自适应限流**：检测 429/限流时降并发到 1，连续 8 次成功后回升到 3
+- ✅ **NL 搜索双路径**：embedding 失败时降级到"LLM 拆词 + SQL LIKE 多字段"，UX 明示走的哪条路径，命中数可见
+- ✅ **聚类双路径**：embedding 不可用时按 5 轴自动选择 group by 标签，避免单一轴退化为 1 组
+- ✅ **响应解析 normalize**：豆包实测 tags 平铺到顶层而非嵌套，加了升纬适配，对不同 vision 模型输出形态鲁棒
 
 **如果再给 3 天我会做什么**：
 1. 专业相机 RAW 支持（dcraw + sharp）
 2. 多文件夹合并到一个项目
 3. 决策回溯（同一张图的评分变化时间线）
 4. mini agent：自然语言对话式筛选——"帮我从这些图里挑出适合 618 母婴营销的"
+5. embedding 接入点 onboarding：检测 embedding 模型可用性，引导用户去控制台开通推理接入点
 
 ## 快捷键速查
 
