@@ -35,6 +35,7 @@ const api = {
     set: (s: any) => ipcRenderer.invoke('settings.set', s),
     cacheStats: () => ipcRenderer.invoke('settings.cacheStats'),
     clearCache: () => ipcRenderer.invoke('settings.clearCache'),
+    testConnection: (payload: { doubaoKey?: string }) => ipcRenderer.invoke('settings.testConnection', payload),
   },
   events: {
     onAIProgress:       (cb: (e: any) => void) => { ipcRenderer.on('ai:progress', (_, e) => cb(e));        return () => ipcRenderer.removeAllListeners('ai:progress') },

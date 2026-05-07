@@ -65,6 +65,18 @@ export const DatabaseService = {
     getDB().prepare(`DELETE FROM projects WHERE id = ?`).run(id)
   },
 
+  // Hashes used only by this project — safe to delete from thumbs / ai-cache
+  // when the project is deleted. A hash shared with another project (same image
+  // imported twice into different projects) must not be touched.
+  getProjectExclusiveHashes(projectId: string): string[] {
+    const rows = getDB().prepare(
+      `SELECT DISTINCT hash FROM images
+        WHERE project_id = ?
+          AND hash NOT IN (SELECT hash FROM images WHERE project_id != ?)`,
+    ).all(projectId, projectId) as { hash: string }[]
+    return rows.map((r) => r.hash)
+  },
+
   touchProject(id: string): void {
     getDB().prepare(`UPDATE projects SET updated_at = ? WHERE id = ?`).run(Date.now(), id)
   },
@@ -300,6 +312,30 @@ export const DatabaseService = {
     const items = rows.map((r) => rowToImage(r, tagsByImage.get(r.id) ?? []))
     const nextCursor = items.length === limit ? offset + limit : null
     return { items, total: totalRow.n, nextCursor }
+  },
+
+  // ── Keyword search (NL-search fallback when embedding is unavailable) ──
+  // Match keywords (OR'd together) against caption, filename, and tag values.
+  // Used by ai.nlSearch when embedText() throws — see electron/main/ipc/ai.ts.
+  searchByKeywords(projectId: string, keywords: string[], limit = 60): string[] {
+    const cleaned = keywords.map((k) => k.trim()).filter(Boolean)
+    if (!cleaned.length) return []
+    const ors: string[] = []
+    const vals: any[] = []
+    for (const k of cleaned) {
+      const like = `%${k}%`
+      ors.push('i.caption_search LIKE ? OR i.filename LIKE ? OR EXISTS (SELECT 1 FROM image_tags t WHERE t.image_id = i.id AND t.tag_value LIKE ?)')
+      vals.push(like, like, like)
+    }
+    // caption is in `ai_caption` column; alias it via subquery so the LIKE is well-typed
+    const sql = `
+      SELECT i.id FROM (
+        SELECT id, COALESCE(ai_caption, '') AS caption_search, filename, project_id FROM images
+      ) i
+      WHERE i.project_id = ? AND (${ors.join(' OR ')})
+      LIMIT ?`
+    const rows = getDB().prepare(sql).all(projectId, ...vals, limit) as { id: string }[]
+    return rows.map((r) => r.id)
   },
 
   // ── Tag aggregation for facet sidebar ────

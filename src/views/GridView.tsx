@@ -7,13 +7,14 @@ import { ImageCard } from '../components/ImageCard'
 
 const COL_MIN_WIDTH = 160
 
-export function GridView({ projectId }: { projectId: string }) {
+export function GridView({ projectId, analyzingIds }: { projectId: string; analyzingIds?: string[] }) {
   const { data } = useImageQuery(projectId)
   const items: Image[] = data?.items ?? []
   const containerRef = useRef<HTMLDivElement>(null)
   const focused = useWorkspaceStore((s) => s.focusedImageId)
   const selection = useWorkspaceStore((s) => s.selection)
   const toggleSelect = useWorkspaceStore((s) => s.toggleSelect)
+  const analyzing = analyzingIds?.length ? new Set(analyzingIds) : null
 
   const cols = (() => {
     const w = containerRef.current?.clientWidth ?? 1200
@@ -44,6 +45,7 @@ export function GridView({ projectId }: { projectId: string }) {
                   key={img.id} image={img}
                   focused={focused === img.id}
                   selected={selection.has(img.id)}
+                  analyzing={analyzing?.has(img.id)}
                   onClick={(e) => toggleSelect(img.id, !(e.metaKey || e.ctrlKey || e.shiftKey))}
                 />
               ))}

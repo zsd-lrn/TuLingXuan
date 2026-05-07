@@ -11,10 +11,12 @@ import { registerAllIPC } from './ipc'
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-gpu-compositing')
-app.commandLine.appendSwitch('disable-software-rasterizer')
 app.commandLine.appendSwitch('in-process-gpu')
 if (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP) {
   app.commandLine.appendSwitch('no-sandbox')
+  // WSL2 的 /dev/shm 在 memfd 链接时会触发 ESRCH FATAL（即使权限是 1777）。
+  // 改用 /tmp 做共享内存，绕开 dev/shm 的子进程崩溃，否则首启会丢一个 GPU/utility 子进程。
+  app.commandLine.appendSwitch('disable-dev-shm-usage')
 }
 
 registerThumbScheme()

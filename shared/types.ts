@@ -109,7 +109,7 @@ export type AIProgressEvent = {
   projectId: string
   done: number
   total: number
-  currentImageId?: string
+  currentImageIds?: string[]   // image ids being analyzed right now (for UI highlight)
 }
 
 export type AIImageUpdatedEvent = { imageId: string }

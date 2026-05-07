@@ -1,6 +1,5 @@
-import { protocol, net } from 'electron'
-import { pathToFileURL } from 'url'
-import { existsSync } from 'fs'
+import { protocol } from 'electron'
+import { existsSync, readFileSync } from 'fs'
 import { ThumbnailService } from '../services/ThumbnailService'
 import { DatabaseService } from '../services/DatabaseService'
 
@@ -20,7 +19,12 @@ export function registerThumbProtocol() {
         catch (e) { console.warn('thumb gen failed for', hash, e) }
       }
     }
-    return net.fetch(pathToFileURL(path).toString())
+    if (!existsSync(path)) return new Response('not found', { status: 404 })
+    // Read directly into a Response. Previously we proxied through net.fetch(file://...)
+    // which silently fails on WSL2 + disable-gpu (renderer never sees bytes, image stays
+    // blank). Thumbs are small (~16KB) so blocking readFileSync is fine.
+    const buf = readFileSync(path)
+    return new Response(buf, { headers: { 'Content-Type': 'image/jpeg' } })
   })
 }
 

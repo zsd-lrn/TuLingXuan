@@ -77,6 +77,7 @@ export function useKeyboardCommand(projectId: string, items: { id: string }[]) {
           if (!cur) return
           api.images.updateDecision({ id: cur.id, projectId, status: cmd.status }).then(() => {
             queryClient.invalidateQueries({ queryKey: ['images'] })
+            queryClient.invalidateQueries({ queryKey: ['image', cur.id] })
             queryClient.invalidateQueries({ queryKey: ['project', projectId] })
           })
           break
@@ -85,6 +86,7 @@ export function useKeyboardCommand(projectId: string, items: { id: string }[]) {
           if (!cur) return
           api.images.updateDecision({ id: cur.id, projectId, score: cmd.score }).then(() => {
             queryClient.invalidateQueries({ queryKey: ['images'] })
+            queryClient.invalidateQueries({ queryKey: ['image', cur.id] })
             queryClient.invalidateQueries({ queryKey: ['project', projectId] })
           })
           break

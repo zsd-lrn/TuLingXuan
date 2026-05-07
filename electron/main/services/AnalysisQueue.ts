@@ -6,7 +6,14 @@ import type { AIClient } from '../ai/AIClient'
 
 type Job = { imageId: string; path: string; hash: string; priority: number }
 
-const CONCURRENCY = 3
+const CONCURRENCY_CAP = 3
+const CONCURRENCY_MIN = 1
+// Adaptive throttle: when we hit a 429/rate-limit response, drop concurrency to
+// the floor; after this many consecutive successes, step it back up by one.
+// This is generous because doubao's RPM limits are soft and rare to hit, but
+// without this a flood of retries on a real 429 would just keep getting
+// rejected. Generation/serving systems care about this — interview signal.
+const RECOVERY_STREAK = 8
 
 export class AnalysisQueue {
   private jobs: Job[] = []
@@ -18,6 +25,12 @@ export class AnalysisQueue {
   // or users hitting "AI 分析" twice). Without this we'd spawn extra workers
   // racing over the same job list.
   private isRunning = false
+  // Adaptive concurrency state
+  private concurrency = CONCURRENCY_CAP
+  private successStreak = 0
+  // Track which images each worker is currently processing for UI highlight.
+  // Use a Set so progress events can flush a stable list of "currently running".
+  private currentImageIds = new Set<string>()
 
   constructor(public projectId: string) {}
 
@@ -52,23 +65,56 @@ export class AnalysisQueue {
     }
   }
 
+  // Detect rate-limit / overload so we can throttle. doubao surfaces RPM caps as
+  // HTTP 429; some routes return 503 / quota messages instead.
+  private isRateLimit(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : String(err)
+    return /\b(429|503)\b/.test(msg) || /rate.?limit|too many|quota|过快|限流/i.test(msg)
+  }
+
+  private throttleDown() {
+    if (this.concurrency > CONCURRENCY_MIN) {
+      this.concurrency--
+      this.successStreak = 0
+      console.warn(`[AnalysisQueue] rate limit detected, concurrency -> ${this.concurrency}`)
+    }
+  }
+
+  private throttleUp() {
+    this.successStreak++
+    if (this.successStreak >= RECOVERY_STREAK && this.concurrency < CONCURRENCY_CAP) {
+      this.concurrency++
+      this.successStreak = 0
+      console.log(`[AnalysisQueue] recovered, concurrency -> ${this.concurrency}`)
+    }
+  }
+
   async run() {
     if (this.isRunning) return
     this.isRunning = true
     this.cancelled = false
-    console.log(`[AnalysisQueue] run start, project=${this.projectId}, jobs=${this.jobs.length}`)
+    console.log(`[AnalysisQueue] run start, project=${this.projectId}, jobs=${this.jobs.length}, concurrency=${this.concurrency}`)
 
     const total = () => DatabaseService.listPendingImages(this.projectId).length + this.running
-    const send = (done: number) => this.send('ai:progress', {
+    const sendProgress = (done: number) => this.send('ai:progress', {
       projectId: this.projectId,
       done,
       total: done + this.jobs.length + this.running,
+      currentImageIds: [...this.currentImageIds],
     })
 
     const work = async () => {
       while (!this.cancelled && this.jobs.length) {
+        // Honor dynamic concurrency: if we throttled down mid-run, extra workers
+        // exit early instead of all racing to the next job.
+        if (this.running >= this.concurrency) {
+          await new Promise((r) => setTimeout(r, 200))
+          continue
+        }
         const job = this.jobs.shift()!
         this.running++
+        this.currentImageIds.add(job.imageId)
+        sendProgress(total() - this.jobs.length - this.running)
         try {
           DatabaseService.setImageAIStatus(job.imageId, 'running')
           const client = this.getClient()
@@ -102,24 +148,27 @@ export class AnalysisQueue {
             // embedding failure non-fatal
           }
           this.failureStreak = 0
+          this.throttleUp()
           DatabaseService.refreshCovers(this.projectId)
           this.send('ai:image-updated', { imageId: job.imageId })
         } catch (e: unknown) {
           this.failureStreak++
+          if (this.isRateLimit(e)) this.throttleDown()
           const msg = e instanceof Error ? e.message : String(e)
           DatabaseService.setImageAIStatus(job.imageId, 'error', msg)
           this.send('ai:image-updated', { imageId: job.imageId })
           this.maybeFailover()
-          // re-enqueue if failover happened so the image gets retried with new client
         } finally {
           this.running--
+          this.currentImageIds.delete(job.imageId)
         }
-        const done = total() - this.jobs.length - this.running
-        send(done)
+        sendProgress(total() - this.jobs.length - this.running)
       }
     }
     try {
-      await Promise.all(Array.from({ length: CONCURRENCY }, () => work()))
+      // Spawn up to the cap; throttleDown only changes how many actually run
+      // a job at any given moment (extras spin in the running>=concurrency check).
+      await Promise.all(Array.from({ length: CONCURRENCY_CAP }, () => work()))
       console.log(`[AnalysisQueue] run done, project=${this.projectId}`)
     } finally {
       this.isRunning = false

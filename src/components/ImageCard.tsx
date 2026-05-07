@@ -4,14 +4,17 @@ const STATUS_COLOR = {
   good: '#22c55e', maybe: '#eab308', bad: '#71717a',
 } as const
 
-export function ImageCard({ image, focused, selected, onClick }: {
-  image: Image; focused: boolean; selected: boolean
+export function ImageCard({ image, focused, selected, analyzing, onClick }: {
+  image: Image; focused: boolean; selected: boolean; analyzing?: boolean
   onClick: (e: React.MouseEvent) => void
 }) {
   const dim = image.aiStatus === 'pending' || image.aiStatus === 'running'
   return (
     <div
       onClick={onClick}
+      // tlx-analyzing applies shimmer + blue outline; takes precedence over focus/select
+      // outlines via !important in the CSS class so the user's eye locks onto activity.
+      className={analyzing ? 'tlx-analyzing' : undefined}
       style={{
         position: 'relative',
         background: '#0a0a0a',

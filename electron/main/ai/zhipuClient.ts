@@ -81,5 +81,25 @@ export function makeZhipuClient(apiKey: string): AIClient {
     return txt.split(/\n+/).map((s: string) => s.replace(/^[-\d.\s]+/, '').trim()).filter(Boolean).slice(0, 3)
   }
 
-  return { name: 'zhipu', analyzeImage, embedText, summarizeCluster, compareImages, rewritePrompts }
+  async function extractSearchKeywords(query: string): Promise<string[]> {
+    const resp = await chat({
+      model: 'glm-4-flash',
+      messages: [
+        { role: 'system', content: '把用户的图片搜索查询拆成 1-5 个核心中文关键词。返回 JSON：{"keywords":["k1","k2"]}。不要其他文字。' },
+        { role: 'user', content: query },
+      ],
+      temperature: 0.1, max_tokens: 100,
+    })
+    const txt = resp.choices?.[0]?.message?.content ?? '{}'
+    try {
+      const m = txt.match(/\{[\s\S]*\}/)
+      const parsed = JSON.parse(m ? m[0] : txt)
+      const list = Array.isArray(parsed) ? parsed : (parsed.keywords ?? parsed.tags ?? [])
+      const out = (list as unknown[]).map((x) => String(x).trim()).filter(Boolean)
+      if (out.length) return out.slice(0, 8)
+    } catch { /* fall through */ }
+    return [query.trim()].filter(Boolean)
+  }
+
+  return { name: 'zhipu', analyzeImage, embedText, summarizeCluster, compareImages, rewritePrompts, extractSearchKeywords }
 }

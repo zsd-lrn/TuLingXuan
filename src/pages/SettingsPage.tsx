@@ -26,6 +26,9 @@ export function SettingsPage({ onBack }: { onBack: () => void }) {
     mutationFn: () => api.settings.clearCache(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cacheStats'] }),
   })
+  const test = useMutation<{ ok: boolean; elapsedMs: number; error?: string }>({
+    mutationFn: () => api.settings.testConnection({ doubaoKey: doubao }),
+  })
 
   return (
     <div style={{ padding: 32, maxWidth: 720, margin: '0 auto' }}>
@@ -51,7 +54,16 @@ export function SettingsPage({ onBack }: { onBack: () => void }) {
           style={{ background: '#4a90e2', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 5, cursor: 'pointer', marginTop: 8 }}>
           {save.isPending ? '保存中…' : '保存'}
         </button>
-        {save.isSuccess && <span style={{ marginLeft: 12, color: '#22c55e', fontSize: 12 }}>已保存</span>}
+        <button onClick={() => test.mutate()} disabled={test.isPending || !doubao}
+          style={{ marginLeft: 8, background: '#222', color: '#ddd', border: '1px solid #333', padding: '8px 14px', borderRadius: 5, cursor: 'pointer', marginTop: 8 }}>
+          {test.isPending ? '测试中…' : '测试连接'}
+        </button>
+        {save.isSuccess && !save.isPending && <span style={{ marginLeft: 12, color: '#22c55e', fontSize: 12 }}>已保存</span>}
+        {test.data && (
+          <span style={{ marginLeft: 12, fontSize: 12, color: test.data.ok ? '#22c55e' : '#f87171' }}>
+            {test.data.ok ? `✓ 连接 OK · ${test.data.elapsedMs}ms` : `✗ ${test.data.error?.slice(0, 80)}`}
+          </span>
+        )}
       </Section>
 
       <Section title="缓存">

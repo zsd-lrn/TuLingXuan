@@ -120,7 +120,28 @@ export function makeDoubaoClient(apiKey: string): AIClient {
     return txt.split(/\n+/).map((s: string) => s.replace(/^[-\d.\s]+/, '').trim()).filter(Boolean).slice(0, 3)
   }
 
-  return { name: 'doubao', analyzeImage, embedText, summarizeCluster, compareImages, rewritePrompts }
+  async function extractSearchKeywords(query: string): Promise<string[]> {
+    const resp = await chat({
+      model: TEXT_MODEL,
+      messages: [
+        { role: 'system', content: '把用户的图片搜索查询拆成 1-5 个核心中文关键词，用于在图片标签和描述中搜索。返回 JSON：{"keywords":["关键词1","关键词2"]}。不要任何其他文字。' },
+        { role: 'user', content: query },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.1, max_tokens: 100,
+    })
+    const txt = resp.choices?.[0]?.message?.content ?? '{}'
+    try {
+      const parsed = JSON.parse(txt)
+      const list = Array.isArray(parsed) ? parsed : (parsed.keywords ?? parsed.tags ?? [])
+      const out = (list as unknown[]).map((x) => String(x).trim()).filter(Boolean)
+      if (out.length) return out.slice(0, 8)
+    } catch { /* fall through */ }
+    // Last-resort: just use the whole query as a single keyword
+    return [query.trim()].filter(Boolean)
+  }
+
+  return { name: 'doubao', analyzeImage, embedText, summarizeCluster, compareImages, rewritePrompts, extractSearchKeywords }
 }
 
 export { readBase64 }

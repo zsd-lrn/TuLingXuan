@@ -54,4 +54,33 @@ export function registerSettingsIPC() {
     for (const f of readdirSync(thumbsDir())) try { unlinkSync(join(thumbsDir(), f)) } catch {}
     for (const f of readdirSync(aiCacheDir())) try { unlinkSync(join(aiCacheDir(), f)) } catch {}
   })
+
+  // Smoke-test the doubao key with a tiny 5-token chat call. Lets the user
+  // verify config without burning vision tokens or polluting the AI cache.
+  ipcMain.handle('settings.testConnection', async (_e, payload: { doubaoKey?: string }) => {
+    const key = payload?.doubaoKey ?? process.env.DOUBAO_API_KEY ?? ''
+    if (!key) return { ok: false, elapsedMs: 0, error: 'no key configured' }
+    const start = Date.now()
+    try {
+      const res = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: 'doubao-1.5-pro-32k-250115',
+          messages: [{ role: 'user', content: '回复 OK' }],
+          max_tokens: 5,
+          temperature: 0,
+        }),
+        signal: AbortSignal.timeout(15000),
+      })
+      const elapsedMs = Date.now() - start
+      if (!res.ok) {
+        const txt = await res.text()
+        return { ok: false, elapsedMs, error: `HTTP ${res.status}: ${txt.slice(0, 200)}` }
+      }
+      return { ok: true, elapsedMs }
+    } catch (e) {
+      return { ok: false, elapsedMs: Date.now() - start, error: (e as Error).message }
+    }
+  })
 }

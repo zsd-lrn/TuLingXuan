@@ -58,5 +58,9 @@ export function makeMockClient(): AIClient {
         'natural light portrait, side profile, film grain, muted palette',
       ]
     },
+    async extractSearchKeywords(query: string) {
+      // Mock: split on whitespace + Chinese punctuation
+      return query.split(/[\s,，、。\.\?？！!\-+]+/).filter(Boolean).slice(0, 8)
+    },
   }
 }

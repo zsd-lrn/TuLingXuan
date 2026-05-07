@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Project } from '@shared/types'
 import { api } from '../lib/ipc'
 import { TopBar } from '../components/TopBar'
@@ -16,6 +16,7 @@ import { useKeyboardCommand } from '../hooks/useKeyboardCommand'
 import { useAIProgress } from '../hooks/useAIProgress'
 
 export function WorkspacePage({ projectId, onBack, onSettings }: { projectId: string; onBack: () => void; onSettings: () => void }) {
+  const qc = useQueryClient()
   const project = useQuery<Project>({ queryKey: ['project', projectId], queryFn: () => api.projects.get(projectId), refetchInterval: 2000 })
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() })
   const view = useWorkspaceStore((s) => s.view)
@@ -29,8 +30,13 @@ export function WorkspacePage({ projectId, onBack, onSettings }: { projectId: st
   }
 
   useEffect(() => {
+    // Force a fresh fetch on entry: when re-opening a project from Home, the import
+    // may have completed long ago (import:progress already fired) and there's no
+    // refetchInterval on useImageQuery, so cached empty state would stick.
+    qc.invalidateQueries({ queryKey: ['images', projectId] })
+    qc.invalidateQueries({ queryKey: ['project', projectId] })
     api.ai.start(projectId).catch(console.error)
-  }, [projectId])
+  }, [projectId, qc])
 
   const aiOff = settings.data && !settings.data.mockMode && !settings.data.doubaoKey
 
@@ -54,13 +60,13 @@ export function WorkspacePage({ projectId, onBack, onSettings }: { projectId: st
           {' '}配置后体验完整 AI
         </div>
       )}
-      <TopBar projectId={projectId} projectName={project.data?.name ?? '...'} onBack={onBack} />
+      <TopBar projectId={projectId} projectName={project.data?.name ?? '...'} onBack={onBack} aiProgress={{ done: ai.done, total: ai.total }} />
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '220px 1fr 280px', minHeight: 0 }}>
         <div style={{ borderRight: '1px solid #222', overflow: 'auto' }}>
           <FilterSidebar projectId={projectId} />
         </div>
         <div style={{ minWidth: 0, overflow: 'hidden' }}>
-          {view === 'grid' && <GridView projectId={projectId} />}
+          {view === 'grid' && <GridView projectId={projectId} analyzingIds={ai.currentImageIds} />}
           {view === 'cluster' && <ClusterView projectId={projectId} />}
           {view === 'compare' && <CompareView projectId={projectId} />}
           {view === 'single' && <SingleView projectId={projectId} />}
@@ -71,7 +77,6 @@ export function WorkspacePage({ projectId, onBack, onSettings }: { projectId: st
       </div>
       <div style={{ height: 28, borderTop: '1px solid #222', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 11, color: '#666' }}>
         {project.data && <span>{project.data.imageCount} 张 · 已决策 {project.data.decidedCount} · 已分析 {project.data.aiAnalyzedCount}</span>}
-        {ai.total > 0 && <span style={{ marginLeft: 12 }}>AI 分析 {ai.done}/{ai.total}</span>}
       </div>
       <KeyboardHints />
     </div>
